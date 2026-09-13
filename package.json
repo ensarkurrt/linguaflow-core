@@ -1,0 +1,40 @@
+{
+  "name": "@linguaflow/core",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ensarkurrt/linguaflow-core.git"
+  },
+  "homepage": "https://github.com/ensarkurrt/linguaflow-core#readme",
+  "bugs": "https://github.com/ensarkurrt/linguaflow-core/issues",
+  "type": "module",
+  "exports": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --import tsx --test test/*.test.ts",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "@formatjs/icu-messageformat-parser": "^2.11.4",
+    "fast-xml-parser": "^5.11.1",
+    "gettext-parser": "^9.1.1",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/gettext-parser": "^4.0.4",
+    "@types/node": "^22.10.2",
+    "tsx": "^4.20.5",
+    "typescript": "^6.0.2"
+  }
+}
