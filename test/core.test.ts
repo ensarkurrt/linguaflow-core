@@ -143,3 +143,17 @@ test('release preparation can fill fallback values or omit incomplete keys', () 
   assert.deepEqual(Object.keys(omitted.snapshot), ['complete'])
   assert.equal(draft.incomplete?.tr, undefined)
 })
+
+test('an intentionally empty translation remains present in a release', () => {
+  const prepared = prepareReleaseSnapshot(
+    { 'home.subtitle': { en: 'Welcome', tr: '' } },
+    {
+      translatedLocales: ['en', 'tr'],
+      fallbackLocale: 'en',
+      strategy: 'reject',
+    },
+  )
+
+  assert.deepEqual(prepared.incomplete, [])
+  assert.equal(prepared.snapshot['home.subtitle']?.tr, '')
+})

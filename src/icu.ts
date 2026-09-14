@@ -111,7 +111,7 @@ export function validateTranslations(input: {
   const issues: QaIssue[] = []
   for (const entry of input.entries) {
     const source = entry.values[input.sourceLocale]
-    if (!source) {
+    if (source === undefined) {
       issues.push(
         issue(
           entry.key,
@@ -127,7 +127,7 @@ export function validateTranslations(input: {
     if (
       input.fallbackLocale &&
       input.fallbackLocale !== input.sourceLocale &&
-      !entry.values[input.fallbackLocale]
+      entry.values[input.fallbackLocale] === undefined
     ) {
       issues.push(
         issue(
@@ -141,7 +141,7 @@ export function validateTranslations(input: {
     }
     for (const locale of input.locales) {
       const value = entry.values[locale]
-      if (!value) {
+      if (value === undefined) {
         issues.push(
           issue(entry.key, locale, 'empty_translation', 'warning', 'Translation is missing'),
         )

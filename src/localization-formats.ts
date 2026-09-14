@@ -11,6 +11,7 @@ import {
   serializeStringCatalog,
   serializeYamlDocument,
 } from './platform-formats.js'
+import { assertLocalizationDocumentSize, flattenLocalizationTree } from './localization-tree.js'
 
 export const LOCALIZATION_FORMATS = [
   'nested_json',
@@ -53,8 +54,22 @@ export type SerializedLocalizationDocument = {
 }
 
 const keyPattern = /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$/
+const unsafeKeySegments = new Set(['__proto__', 'prototype', 'constructor'])
 const metadataHeaders = new Set(['key', 'description', 'context', 'characterLimit'])
 const maxEntries = 10_000
+
+export class LocalizationFormatError extends Error {
+  readonly name = 'LocalizationFormatError'
+  readonly code = 'invalid_localization_document'
+
+  constructor(
+    readonly operation: 'parse' | 'serialize',
+    readonly format: LocalizationFormat,
+    override readonly cause: unknown,
+  ) {
+    super(cause instanceof Error ? cause.message : 'Localization document operation failed')
+  }
+}
 
 export function parseLocalizationDocument(input: {
   format: LocalizationFormat
@@ -63,6 +78,22 @@ export function parseLocalizationDocument(input: {
   sourceLocale?: string
   allowedLocales: string[]
 }): ImportedTranslation[] {
+  try {
+    return parseLocalizationDocumentUnchecked(input)
+  } catch (error) {
+    if (error instanceof LocalizationFormatError) throw error
+    throw new LocalizationFormatError('parse', input.format, error)
+  }
+}
+
+function parseLocalizationDocumentUnchecked(input: {
+  format: LocalizationFormat
+  content: string
+  locale?: string
+  sourceLocale?: string
+  allowedLocales: string[]
+}): ImportedTranslation[] {
+  assertLocalizationDocumentSize(input.content)
   const parsed = parseDocument(input)
   if (parsed.length > maxEntries) throw new Error(`Import cannot exceed ${maxEntries} values`)
   const allowed = new Set(input.allowedLocales)
@@ -94,6 +125,21 @@ export function parseLocalizationDocument(input: {
 }
 
 export function serializeLocalizationDocument(input: {
+  format: LocalizationFormat
+  locale?: string
+  sourceLocale?: string
+  locales: string[]
+  entries: LocalizationDocumentEntry[]
+}): SerializedLocalizationDocument {
+  try {
+    return serializeLocalizationDocumentUnchecked(input)
+  } catch (error) {
+    if (error instanceof LocalizationFormatError) throw error
+    throw new LocalizationFormatError('serialize', input.format, error)
+  }
+}
+
+function serializeLocalizationDocumentUnchecked(input: {
   format: LocalizationFormat
   locale?: string
   sourceLocale?: string
@@ -212,7 +258,8 @@ function parseJsonDocument(
   }
   if (!isRecord(document)) throw new Error('Localization JSON must contain an object at its root')
   if (format === 'arb') return parseArb(document, locale)
-  const values = format === 'nested_json' ? flattenObject(document) : document
+  const values =
+    format === 'nested_json' ? flattenLocalizationTree(document, 'Nested JSON') : document
   return Object.entries(values).map(([key, value]) => {
     if (typeof value !== 'string') throw new Error(`Value for "${key}" must be a string`)
     return { key, locale, value }
@@ -251,18 +298,6 @@ function parseArb(
       },
     ]
   })
-}
-
-function flattenObject(document: Record<string, unknown>, prefix = ''): Record<string, string> {
-  const flattened: Record<string, string> = Object.create(null) as Record<string, string>
-  for (const [segment, value] of Object.entries(document)) {
-    if (!segment) throw new Error('Nested JSON keys cannot be empty')
-    const key = prefix ? `${prefix}.${segment}` : segment
-    if (typeof value === 'string') flattened[key] = value
-    else if (isRecord(value)) Object.assign(flattened, flattenObject(value, key))
-    else throw new Error(`Nested JSON value for "${key}" must be a string or object`)
-  }
-  return flattened
 }
 
 function parseCsvDocument(content: string, allowedLocales: string[]): ImportedTranslation[] {
@@ -425,7 +460,11 @@ function requiredLocale(locale: string | undefined): string {
 }
 
 function assertTranslationKey(key: string): void {
-  if (key.length > 180 || !keyPattern.test(key))
+  if (
+    key.length > 180 ||
+    !keyPattern.test(key) ||
+    key.split('.').some((segment) => unsafeKeySegments.has(segment))
+  )
     throw new Error(`Invalid localization key "${key}"`)
 }
 

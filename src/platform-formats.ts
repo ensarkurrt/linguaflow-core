@@ -5,6 +5,7 @@ import type {
   ExchangeStatus,
   ExchangeTranslation,
 } from './localization-exchange.types.js'
+import { flattenLocalizationTree } from './localization-tree.js'
 
 type RecordValue = Record<string, unknown>
 
@@ -16,7 +17,11 @@ export function parseYamlDocument(content: string, locale: string): ExchangeTran
     throw new Error('The selected file is not valid YAML 1.2')
   }
   if (!isRecord(document)) throw new Error('Localization YAML must contain a map at its root')
-  return Object.entries(flatten(document)).map(([key, value]) => ({ key, locale, value }))
+  return Object.entries(flattenLocalizationTree(document, 'YAML')).map(([key, value]) => ({
+    key,
+    locale,
+    value,
+  }))
 }
 
 export function serializeYamlDocument(entries: ExchangeEntry[], locale: string): string {
@@ -191,18 +196,6 @@ function catalogState(status: string | undefined): string {
   if (status === 'in_review') return 'needs_review'
   if (status === 'rejected' || status === 'source_changed') return 'stale'
   return 'translated'
-}
-
-function flatten(document: RecordValue, prefix = ''): Record<string, string> {
-  const result: Record<string, string> = Object.create(null) as Record<string, string>
-  for (const [segment, value] of Object.entries(document)) {
-    if (!segment) throw new Error('YAML keys cannot be empty')
-    const key = prefix ? `${prefix}.${segment}` : segment
-    if (typeof value === 'string') result[key] = value
-    else if (isRecord(value)) Object.assign(result, flatten(value, key))
-    else throw new Error(`YAML value for "${key}" must be a string or map`)
-  }
-  return result
 }
 
 function nested(entries: ExchangeEntry[], locale: string): RecordValue {

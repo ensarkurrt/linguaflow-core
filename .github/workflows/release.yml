@@ -1,0 +1,57 @@
+name: Release npm package
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: npm
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@8912a9102ac27614460f54aedde9e1e7f9aec20d # v6.0.5
+        with:
+          version: 10.17.1
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: node scripts/check-public-release-version.mjs
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm audit --prod --audit-level high
+      - run: node scripts/check-production-licenses.mjs
+      - run: pnpm test
+      - name: Create package and SBOM
+        id: artifact
+        shell: bash
+        run: |
+          mkdir -p dist/release
+          pnpm pack --pack-destination dist/release
+          archive="$(find dist/release -maxdepth 1 -name '*.tgz' -print -quit)"
+          test -n "$archive"
+          node scripts/generate-sbom.mjs --output dist/release/sbom.cdx.json
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+      - name: Attest package provenance
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: ${{ steps.artifact.outputs.archive }}
+      - name: Attest package SBOM
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.2.0
+        with:
+          subject-path: ${{ steps.artifact.outputs.archive }}
+          sbom-path: dist/release/sbom.cdx.json
+      - run: npm publish "${{ steps.artifact.outputs.archive }}" --access public --provenance

@@ -214,14 +214,14 @@ export function prepareReleaseSnapshot(
   const incomplete = Object.entries(snapshot)
     .map(([key, values]) => ({
       key,
-      locales: input.translatedLocales.filter((locale) => !values[locale]),
+      locales: input.translatedLocales.filter((locale) => values[locale] === undefined),
     }))
     .filter(({ locales }) => locales.length > 0)
 
   if (input.strategy === 'use_fallback') {
     for (const item of incomplete) {
       const fallback = snapshot[item.key]?.[input.fallbackLocale]
-      if (!fallback) {
+      if (fallback === undefined) {
         throw new Error(`Fallback translation is missing for ${item.key}`)
       }
       for (const locale of item.locales) snapshot[item.key]![locale] = fallback

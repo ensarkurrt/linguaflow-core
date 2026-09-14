@@ -21,9 +21,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "clean": "node scripts/clean-package-output.mjs",
+    "build": "pnpm clean && tsc -p tsconfig.json",
     "test": "node --import tsx --test test/*.test.ts",
-    "prepack": "pnpm build"
+    "prepack": "pnpm build",
+    "pack:check": "npm pack --dry-run --json"
   },
   "dependencies": {
     "@formatjs/icu-messageformat-parser": "^2.11.4",
@@ -36,5 +38,6 @@
     "@types/node": "^22.10.2",
     "tsx": "^4.20.5",
     "typescript": "^6.0.2"
-  }
+  },
+  "packageManager": "pnpm@10.17.1"
 }

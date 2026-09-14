@@ -1,0 +1,4 @@
+seed: &seed ['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']
+level1: &level1 [*seed, *seed, *seed, *seed]
+level2: &level2 [*level1, *level1, *level1, *level1]
+home: *level2

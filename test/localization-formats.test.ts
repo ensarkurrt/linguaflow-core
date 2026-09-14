@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   parseLocalizationDocument,
+  LocalizationFormatError,
   serializeLocalizationDocument,
   type LocalizationDocumentEntry,
 } from '../src/index.ts'
@@ -521,5 +522,43 @@ test('imports reject unsafe shapes, keys, locales and malformed CSV', () => {
         allowedLocales: ['en'],
       }),
     /Description.*exceeds 500/,
+  )
+  assert.throws(
+    () =>
+      parseLocalizationDocument({
+        format: 'flat_json',
+        content: `{"home.title":"${'x'.repeat(6 * 1024 * 1024)}"}`,
+        locale: 'en',
+        allowedLocales: ['en'],
+      }),
+    /cannot exceed 6291456 bytes/,
+  )
+  const deeplyNested = `${'{"level":'.repeat(33)}"value"${'}'.repeat(33)}`
+  assert.throws(
+    () =>
+      parseLocalizationDocument({
+        format: 'nested_json',
+        content: deeplyNested,
+        locale: 'en',
+        allowedLocales: ['en'],
+      }),
+    /cannot exceed 32 levels/,
+  )
+})
+
+test('public format failures expose a stable typed error', () => {
+  assert.throws(
+    () =>
+      parseLocalizationDocument({
+        format: 'flat_json',
+        content: 'not-json',
+        locale: 'en',
+        allowedLocales: ['en'],
+      }),
+    (error) =>
+      error instanceof LocalizationFormatError &&
+      error.code === 'invalid_localization_document' &&
+      error.operation === 'parse' &&
+      error.format === 'flat_json',
   )
 })

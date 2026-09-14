@@ -113,7 +113,6 @@ function compileNodes(nodes: MessageNode[], withinPlural: boolean, depth: number
 function compileNode(node: MessageNode, withinPlural: boolean, depth: number): string {
   switch (node.type) {
     case 'text':
-      if (!node.value) throw new SyntaxError('Text blocks cannot be empty')
       return escapeIcuLiteral(node.value, withinPlural)
     case 'argument':
       assertArgumentName(node.name)

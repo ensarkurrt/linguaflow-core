@@ -1,0 +1,3 @@
+<?xml version="1.0"?>
+<!DOCTYPE resources [<!ENTITY secret SYSTEM "file:///etc/passwd">]>
+<resources><string name="home__title">&secret;</string></resources>
